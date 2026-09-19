@@ -31,3 +31,11 @@ def conn():
     c.row_factory = sqlite3.Row
     c.execute("PRAGMA foreign_keys = ON")
     return c
+
+def init():
+    with conn() as c:
+        c.executescript("""
+        CREATE TABLE IF NOT EXISTS roles(id TEXT PRIMARY KEY, title TEXT NOT NULL, description TEXT NOT NULL, requirements TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP);
+        CREATE TABLE IF NOT EXISTS candidates(id TEXT PRIMARY KEY, role_id TEXT NOT NULL REFERENCES roles(id) ON DELETE CASCADE, filename TEXT NOT NULL, sha256 TEXT NOT NULL, file_path TEXT NOT NULL, text TEXT NOT NULL, parsed TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'New', notes TEXT NOT NULL DEFAULT '', created_at TEXT DEFAULT CURRENT_TIMESTAMP, UNIQUE(role_id, sha256));
+        """)
+init()
