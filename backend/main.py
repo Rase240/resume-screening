@@ -50,3 +50,13 @@ class RoleIn(BaseModel):
     location: str = ""
     work_mode: str = "Hybrid"
     weights: dict[str, int] = {"Required skills":35,"Preferred skills":10,"Experience":15,"Education":10,"Location":5,"Language similarity":25}
+
+class CandidateEdit(BaseModel):
+    status: str | None = None
+    notes: str | None = None
+    text: str | None = None
+    parsed: dict | None = None
+
+class BulkStatusEdit(BaseModel):
+    ids: list[str] = Field(min_length=1, max_length=50)
+    status: str
