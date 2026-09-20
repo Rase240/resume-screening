@@ -39,3 +39,14 @@ def init():
         CREATE TABLE IF NOT EXISTS candidates(id TEXT PRIMARY KEY, role_id TEXT NOT NULL REFERENCES roles(id) ON DELETE CASCADE, filename TEXT NOT NULL, sha256 TEXT NOT NULL, file_path TEXT NOT NULL, text TEXT NOT NULL, parsed TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'New', notes TEXT NOT NULL DEFAULT '', created_at TEXT DEFAULT CURRENT_TIMESTAMP, UNIQUE(role_id, sha256));
         """)
 init()
+
+class RoleIn(BaseModel):
+    title: str = Field(min_length=2, max_length=120)
+    description: str = Field(min_length=10, max_length=20000)
+    required_skills: list[str] = []
+    preferred_skills: list[str] = []
+    min_experience: float = Field(default=0, ge=0, le=50)
+    education: str = ""
+    location: str = ""
+    work_mode: str = "Hybrid"
+    weights: dict[str, int] = {"Required skills":35,"Preferred skills":10,"Experience":15,"Education":10,"Location":5,"Language similarity":25}
