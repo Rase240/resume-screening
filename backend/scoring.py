@@ -23,3 +23,7 @@ def variants(skill):
 
 def has_skill(text, skill):
     return any(re.search(r"(?<!\w)" + re.escape(v) + r"(?!\w)", text, re.I) for v in variants(skill))
+
+def evidence(text, term):
+    lines = [x.strip() for x in text.splitlines() if x.strip()]
+    return next((x[:240] for x in lines if has_skill(x, term)), "")
