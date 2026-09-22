@@ -35,3 +35,21 @@ def job_relevant_text(text):
     body = re.sub(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", " ", body)
     body = re.sub(r"(?<!\d)(?:\+?\d[\d ()-]{8,}\d)(?!\d)", " ", body)
     return body
+
+def parse_resume(text, filename=""):
+    lines = [x.strip() for x in text.splitlines() if x.strip()]
+    email = re.search(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", text)
+    phone = re.search(r"(?<!\d)(?:\+?\d[\d ()-]{8,}\d)(?!\d)", text)
+    name = next((x for x in lines[:6] if len(x) < 65 and not any(z in x.lower() for z in ["@", "resume", "curriculum", "http", "phone", "email"]) and not re.search(r"\d", x)), filename.rsplit(".",1)[0].replace("_", " "))
+    yrs = [float(x) for x in re.findall(r"(\d{1,2}(?:\.\d)?)\s*\+?\s*(?:years|yrs)\b", text, re.I)]
+    years = min(max(yrs), 50) if yrs else 0
+    if not yrs:
+        found = [int(y) for y in re.findall(r"\b(?:19|20)\d{2}\b", text)]
+        if len(found) >= 2:
+            years = min(max(date.today().year - min(found), 0), 50)
+    degree = next((k.title() for k in DEGREES if re.search(r"(?<!\w)" + re.escape(k) + r"(?!\w)", text, re.I)), "Not identified")
+    skill_list = [s for s in KNOWN_SKILLS if has_skill(text, s)]
+    title = next((x for x in lines[1:6] if len(x) < 90 and not re.search(r"@|\d{5,}", x)), "")
+    certificates = [x[:120] for x in lines if re.search(r"certif|credential|license", x, re.I)][:5]
+    work_history = [x[:180] for x in lines if re.search(r"\b(engineer|developer|designer|analyst|manager|consultant|intern|architect|lead)\b", x, re.I) and x != name][:6]
+    return {"name": name, "email": email.group(0) if email else "", "phone": phone.group(0).strip() if phone else "", "title": title, "skills": skill_list, "years": years, "education": degree, "certifications": certificates, "work_history": work_history}
