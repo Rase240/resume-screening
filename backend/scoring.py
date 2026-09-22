@@ -53,3 +53,17 @@ def parse_resume(text, filename=""):
     certificates = [x[:120] for x in lines if re.search(r"certif|credential|license", x, re.I)][:5]
     work_history = [x[:180] for x in lines if re.search(r"\b(engineer|developer|designer|analyst|manager|consultant|intern|architect|lead)\b", x, re.I) and x != name][:6]
     return {"name": name, "email": email.group(0) if email else "", "phone": phone.group(0).strip() if phone else "", "title": title, "skills": skill_list, "years": years, "education": degree, "certifications": certificates, "work_history": work_history}
+
+def similarity(job_text, resume_text):
+    if not job_text.strip() or not resume_text.strip():
+        return 0
+    # Word and character n-grams capture phrasing and close terminology. This
+    # local, reproducible fallback needs no network model or paid API.
+    scores = []
+    for analyzer, ngram in [("word", (1, 2)), ("char_wb", (3, 5))]:
+        try:
+            matrix = TfidfVectorizer(analyzer=analyzer, ngram_range=ngram, stop_words="english" if analyzer == "word" else None, max_features=12000).fit_transform([job_text, resume_text[:30000]])
+            scores.append(float(cosine_similarity(matrix[0], matrix[1])[0, 0]))
+        except ValueError:
+            scores.append(0)
+    return round(min(1, scores[0] * .65 + scores[1] * .35), 3)
