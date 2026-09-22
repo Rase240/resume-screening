@@ -27,3 +27,11 @@ def has_skill(text, skill):
 def evidence(text, term):
     lines = [x.strip() for x in text.splitlines() if x.strip()]
     return next((x[:240] for x in lines if has_skill(x, term)), "")
+
+def job_relevant_text(text):
+    excluded = re.compile(r"\b(date of birth|dob|age|gender|sex|marital|nationality|religion|ethnicity|race|pronouns?)\b", re.I)
+    lines = [x for x in text.splitlines() if not excluded.search(x)]
+    body = "\n".join(lines[1:])  # Drop the name/header line.
+    body = re.sub(r"[\w.+-]+@[\w.-]+\.[A-Za-z]{2,}", " ", body)
+    body = re.sub(r"(?<!\d)(?:\+?\d[\d ()-]{8,}\d)(?!\d)", " ", body)
+    return body
