@@ -67,3 +67,38 @@ def similarity(job_text, resume_text):
         except ValueError:
             scores.append(0)
     return round(min(1, scores[0] * .65 + scores[1] * .35), 3)
+
+def score(role, candidate):
+    text = candidate["text"]
+    parsed = candidate["parsed"]
+    corrected_skills = parsed.get("skills", [])
+    search_text = text + "\n" + "; ".join(corrected_skills)
+    required = role.get("required_skills", [])
+    preferred = role.get("preferred_skills", [])
+    matched_req = [s for s in required if has_skill(search_text, s)]
+    matched_pref = [s for s in preferred if has_skill(search_text, s)]
+    missing = [s for s in required if s not in matched_req]
+    degree_min = norm(role.get("education", ""))
+    education_text = parsed.get("education", "") or text
+    degree_score = 100 if not degree_min else (100 if any(DEGREES.get(k,0) >= DEGREES.get(degree_min, 99) for k in DEGREES if has_skill(education_text,k)) else 0)
+    min_years = float(role.get("min_experience", 0) or 0)
+    experience_score = 100 if not min_years else min(100, round(parsed.get("years", 0) / min_years * 100))
+    location = norm(role.get("location", ""))
+    location_score = 100 if not location or role.get("work_mode") == "Remote" else (100 if location in norm(text) else 0)
+    job_text = " ".join([role.get("title", ""), role.get("description", ""), " ".join(required), " ".join(preferred)])
+    semantic = round(similarity(job_text, job_relevant_text(text)) * 100)
+    categories = {
+        "Required skills": round(len(matched_req)/len(required)*100) if required else 100,
+        "Preferred skills": round(len(matched_pref)/len(preferred)*100) if preferred else 100,
+        "Experience": experience_score, "Education": degree_score,
+        "Location": location_score, "Language similarity": semantic,
+    }
+    weights = role.get("weights") or {"Required skills": 35, "Preferred skills": 10, "Experience": 15, "Education": 10, "Location": 5, "Language similarity": 25}
+    active = {k: v for k,v in weights.items() if not ((k == "Required skills" and not required) or (k == "Preferred skills" and not preferred) or (k == "Education" and not degree_min) or (k == "Experience" and not min_years) or (k == "Location" and (not location or role.get("work_mode") == "Remote")))}
+    total = sum(active.values()) or 1
+    overall = round(sum(categories[k] * v for k,v in active.items()) / total)
+    reasons = []
+    if matched_req: reasons.append(f"Matches {len(matched_req)} of {len(required)} required skills")
+    if missing: reasons.append(f"Missing evidence for {', '.join(missing[:3])}")
+    if min_years: reasons.append(f"Estimated {parsed.get('years', 0):g} years against {min_years:g} required")
+    return {"score": max(0,min(100,overall)), "categories": categories, "matched": matched_req + matched_pref, "missing": missing, "evidence": [{"requirement": s, "excerpt": evidence(text,s) or "Confirmed by reviewer in corrected skill details."} for s in matched_req + matched_pref], "explanation": ". ".join(reasons) + ("." if reasons else " Review the resume evidence and role description.")}
