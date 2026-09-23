@@ -13,3 +13,18 @@ def test_parser_extracts_contact_skills_and_experience():
 def test_evidence_and_missing_are_explainable():
     good={"text":"Ada Test\nBachelor of Science\n5 years building Python APIs with PostgreSQL on AWS.","parsed":{"years":5}}
     weak={"text":"Ada Test\n2 years building static websites with HTML and CSS.","parsed":{"years":2}}
+    a,b=score(ROLE,good),score(ROLE,weak)
+    assert a["score"]>b["score"]
+    assert a["missing"]==[]
+    assert "PostgreSQL" in b["missing"]
+    assert any("PostgreSQL" in e["excerpt"] for e in a["evidence"])
+
+def test_skill_match_uses_word_boundaries():
+    result=score({**ROLE,"required_skills":["Go"],"preferred_skills":[]},{"text":"Worked with Google Analytics", "parsed":{"years":0}})
+    assert result["categories"]["Required skills"]==0
+
+def test_reviewer_skill_correction_changes_match_with_attribution():
+    candidate={"text":"Built backend systems for four years.","parsed":{"years":4,"skills":["Python","PostgreSQL"],"education":"Bachelor"}}
+    result=score(ROLE,candidate)
+    assert result["categories"]["Required skills"]==100
+    assert result["evidence"][0]["excerpt"]=="Confirmed by reviewer in corrected skill details."
