@@ -78,3 +78,18 @@ def candidate_from(row, role):
 
 @app.get("/health")
 def health(): return {"status": "ok"}
+
+@app.get("/roles")
+def list_roles():
+    with conn() as c: rows = c.execute("SELECT * FROM roles ORDER BY created_at DESC").fetchall()
+    return [role_from(r) for r in rows]
+
+@app.post("/roles", status_code=201)
+def create_role(body: RoleIn):
+    if set(body.weights) != WEIGHT_KEYS or sum(body.weights.values()) != 100 or any(v < 0 for v in body.weights.values()):
+        raise HTTPException(422, "Scoring weights must total 100")
+    role_id = str(uuid.uuid4())
+    info = body.model_dump()
+    with conn() as c:
+        c.execute("INSERT INTO roles(id,title,description,requirements) VALUES(?,?,?,?)", (role_id, body.title, body.description, json.dumps(info)))
+    return get_role(role_id)
