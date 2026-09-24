@@ -60,3 +60,21 @@ class CandidateEdit(BaseModel):
 class BulkStatusEdit(BaseModel):
     ids: list[str] = Field(min_length=1, max_length=50)
     status: str
+
+def role_from(row):
+    return {"id": row["id"], **json.loads(row["requirements"]), "title": row["title"], "description": row["description"], "created_at": row["created_at"]}
+
+def get_role(role_id):
+    with conn() as c:
+        row = c.execute("SELECT * FROM roles WHERE id=?", (role_id,)).fetchone()
+    if not row: raise HTTPException(404, "Role not found")
+    return role_from(row)
+
+def candidate_from(row, role):
+    item = {k: row[k] for k in ["id", "role_id", "filename", "text", "status", "notes", "created_at"]}
+    item["parsed"] = json.loads(row["parsed"])
+    item["match"] = score(role, item)
+    return item
+
+@app.get("/health")
+def health(): return {"status": "ok"}
