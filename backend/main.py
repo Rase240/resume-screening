@@ -93,3 +93,18 @@ def create_role(body: RoleIn):
     with conn() as c:
         c.execute("INSERT INTO roles(id,title,description,requirements) VALUES(?,?,?,?)", (role_id, body.title, body.description, json.dumps(info)))
     return get_role(role_id)
+
+@app.put("/roles/{role_id}")
+def update_role(role_id: str, body: RoleIn):
+    get_role(role_id)
+    if set(body.weights) != WEIGHT_KEYS or sum(body.weights.values()) != 100 or any(v < 0 for v in body.weights.values()): raise HTTPException(422, "Scoring weights must total 100")
+    with conn() as c: c.execute("UPDATE roles SET title=?,description=?,requirements=? WHERE id=?", (body.title, body.description, json.dumps(body.model_dump()), role_id))
+    return get_role(role_id)
+
+@app.delete("/roles/{role_id}", status_code=204)
+def delete_role(role_id: str):
+    get_role(role_id)
+    with conn() as c:
+        paths = [r[0] for r in c.execute("SELECT file_path FROM candidates WHERE role_id=?",(role_id,))]
+        c.execute("DELETE FROM roles WHERE id=?", (role_id,))
+    for path in paths: Path(path).unlink(missing_ok=True)
