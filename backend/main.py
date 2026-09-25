@@ -163,3 +163,15 @@ def get_candidate(candidate_id):
     with conn() as c: row = c.execute("SELECT * FROM candidates WHERE id=?", (candidate_id,)).fetchone()
     if not row: raise HTTPException(404, "Candidate not found")
     return row
+
+@app.patch("/candidates/{candidate_id}")
+def edit_candidate(candidate_id: str, body: CandidateEdit):
+    row = get_candidate(candidate_id)
+    status = body.status if body.status is not None else row["status"]
+    if status not in ["New", "In review", "Shortlisted", "Rejected"]: raise HTTPException(422, "Invalid status")
+    notes = body.notes if body.notes is not None else row["notes"]
+    text = body.text if body.text is not None else row["text"]
+    parsed = body.parsed if body.parsed is not None else json.loads(row["parsed"])
+    if len(text) > 100000 or len(notes) > 5000: raise HTTPException(422, "Text too long")
+    with conn() as c: c.execute("UPDATE candidates SET status=?,notes=?,text=?,parsed=? WHERE id=?", (status,notes,text,json.dumps(parsed),candidate_id))
+    return candidate_from(get_candidate(candidate_id), get_role(row["role_id"]))
