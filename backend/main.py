@@ -125,3 +125,36 @@ def extract(data, suffix):
     parts = [p.text for p in doc.paragraphs]
     parts += [cell.text for table in doc.tables for row in table.rows for cell in row.cells]
     return "\n".join(parts)
+
+@app.post("/roles/{role_id}/upload")
+async def upload(role_id: str, files: list[UploadFile] = File(...)):
+    get_role(role_id)
+    if len(files) > 50: raise HTTPException(413, "Upload at most 50 files at once")
+    results = []
+    for file in files:
+        name = Path(file.filename or "resume").name[:150]
+        suffix = Path(name).suffix.lower()
+        if suffix not in [".pdf", ".docx"]:
+            results.append({"filename": name, "status": "error", "message": "Only PDF and DOCX files are supported"}); continue
+        data = await file.read(MAX_FILE + 1)
+        if len(data) > MAX_FILE:
+            results.append({"filename":name,"status":"error","message":"File exceeds 10 MB"}); continue
+        if not ((suffix == ".pdf" and data.startswith(b"%PDF-")) or (suffix == ".docx" and data.startswith(b"PK"))):
+            results.append({"filename":name,"status":"error","message":"File content does not match extension"}); continue
+        digest = hashlib.sha256(data).hexdigest()
+        with conn() as c: duplicate = c.execute("SELECT id FROM candidates WHERE role_id=? AND sha256=?", (role_id, digest)).fetchone()
+        if duplicate:
+            results.append({"filename":name,"status":"duplicate","message":"Already uploaded for this role"}); continue
+        try:
+            text = extract(data, suffix).strip()
+            if len(text) < 40: raise ValueError("No readable text found. Scanned PDFs need OCR.")
+            parsed = parse_resume(text, name)
+            candidate_id = str(uuid.uuid4())
+            path = FILES / (candidate_id + suffix)
+            path.write_bytes(data)
+            with conn() as c:
+                c.execute("INSERT INTO candidates(id,role_id,filename,sha256,file_path,text,parsed) VALUES(?,?,?,?,?,?,?)", (candidate_id,role_id,name,digest,str(path),text,json.dumps(parsed)))
+            results.append({"filename":name,"status":"processed","id":candidate_id,"name":parsed["name"]})
+        except Exception as exc:
+            results.append({"filename":name,"status":"error","message":str(exc)[:180]})
+    return results
