@@ -108,3 +108,20 @@ def delete_role(role_id: str):
         paths = [r[0] for r in c.execute("SELECT file_path FROM candidates WHERE role_id=?",(role_id,))]
         c.execute("DELETE FROM roles WHERE id=?", (role_id,))
     for path in paths: Path(path).unlink(missing_ok=True)
+
+@app.get("/roles/{role_id}/candidates")
+def list_candidates(role_id: str):
+    role = get_role(role_id)
+    with conn() as c: rows = c.execute("SELECT * FROM candidates WHERE role_id=?", (role_id,)).fetchall()
+    return sorted([candidate_from(r, role) for r in rows], key=lambda x: (-x["match"]["score"], x["parsed"]["name"].lower()))
+
+def extract(data, suffix):
+    stream = io.BytesIO(data)
+    if suffix == ".pdf":
+        reader = PdfReader(stream)
+        if len(reader.pages) > 40: raise ValueError("PDF exceeds 40 pages")
+        return "\n".join(p.extract_text() or "" for p in reader.pages)
+    doc = Document(stream)
+    parts = [p.text for p in doc.paragraphs]
+    parts += [cell.text for table in doc.tables for row in table.rows for cell in row.cells]
+    return "\n".join(parts)
