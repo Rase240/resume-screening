@@ -158,3 +158,8 @@ async def upload(role_id: str, files: list[UploadFile] = File(...)):
         except Exception as exc:
             results.append({"filename":name,"status":"error","message":str(exc)[:180]})
     return results
+
+def get_candidate(candidate_id):
+    with conn() as c: row = c.execute("SELECT * FROM candidates WHERE id=?", (candidate_id,)).fetchone()
+    if not row: raise HTTPException(404, "Candidate not found")
+    return row
