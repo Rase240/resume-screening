@@ -191,3 +191,14 @@ def bulk_status(role_id: str, body: BulkStatusEdit):
             raise HTTPException(404, "One or more candidates were not found in this role")
         c.executemany("UPDATE candidates SET status=? WHERE id=?", [(body.status, candidate_id) for candidate_id in ids])
     return {"updated": len(ids), "status": body.status}
+
+@app.delete("/candidates/{candidate_id}", status_code=204)
+def delete_candidate(candidate_id: str):
+    row = get_candidate(candidate_id)
+    with conn() as c: c.execute("DELETE FROM candidates WHERE id=?", (candidate_id,))
+    Path(row["file_path"]).unlink(missing_ok=True)
+
+@app.get("/candidates/{candidate_id}/file")
+def candidate_file(candidate_id: str):
+    row = get_candidate(candidate_id)
+    return FileResponse(row["file_path"], filename=row["filename"], media_type="application/pdf" if row["filename"].lower().endswith(".pdf") else "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
