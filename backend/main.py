@@ -175,3 +175,19 @@ def edit_candidate(candidate_id: str, body: CandidateEdit):
     if len(text) > 100000 or len(notes) > 5000: raise HTTPException(422, "Text too long")
     with conn() as c: c.execute("UPDATE candidates SET status=?,notes=?,text=?,parsed=? WHERE id=?", (status,notes,text,json.dumps(parsed),candidate_id))
     return candidate_from(get_candidate(candidate_id), get_role(row["role_id"]))
+
+@app.patch("/roles/{role_id}/candidates/status")
+def bulk_status(role_id: str, body: BulkStatusEdit):
+    get_role(role_id)
+    if body.status not in ["New", "In review", "Shortlisted", "Rejected"]:
+        raise HTTPException(422, "Invalid status")
+    ids = list(dict.fromkeys(body.ids))
+    with conn() as c:
+        rows = c.execute(
+            f"SELECT id FROM candidates WHERE role_id=? AND id IN ({','.join('?' for _ in ids)})",
+            (role_id, *ids),
+        ).fetchall()
+        if len(rows) != len(ids):
+            raise HTTPException(404, "One or more candidates were not found in this role")
+        c.executemany("UPDATE candidates SET status=? WHERE id=?", [(body.status, candidate_id) for candidate_id in ids])
+    return {"updated": len(ids), "status": body.status}
