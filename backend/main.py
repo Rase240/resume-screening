@@ -202,3 +202,13 @@ def delete_candidate(candidate_id: str):
 def candidate_file(candidate_id: str):
     row = get_candidate(candidate_id)
     return FileResponse(row["file_path"], filename=row["filename"], media_type="application/pdf" if row["filename"].lower().endswith(".pdf") else "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+
+@app.get("/roles/{role_id}/export")
+def export(role_id: str):
+    candidates = list_candidates(role_id)
+    out = io.StringIO()
+    writer = csv.writer(out)
+    writer.writerow(["Rank","Name","Email","Current role","Score","Status","Matched skills","Missing required skills","Notes"])
+    for i,c in enumerate(candidates,1): writer.writerow([i,c["parsed"]["name"],c["parsed"]["email"],c["parsed"]["title"],c["match"]["score"],c["status"],"; ".join(c["match"]["matched"]),"; ".join(c["match"]["missing"]),c["notes"]])
+    out.seek(0)
+    return StreamingResponse(iter([out.getvalue()]), media_type="text/csv", headers={"Content-Disposition":"attachment; filename=folio-ranking.csv"})
