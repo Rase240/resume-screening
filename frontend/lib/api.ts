@@ -2,3 +2,14 @@ export const API = process.env.NEXT_PUBLIC_API_URL || '/api';
 export type Role = {id:string;title:string;description:string;required_skills:string[];preferred_skills:string[];min_experience:number;education:string;location:string;work_mode:string;weights:Record<string,number>};
 export type Candidate = {id:string;role_id:string;filename:string;text:string;status:string;notes:string;parsed:{name:string;email:string;phone:string;title:string;skills:string[];years:number;education:string;certifications:string[];work_history:string[]};match:{score:number;categories:Record<string,number>;matched:string[];missing:string[];evidence:{requirement:string;excerpt:string}[];explanation:string}};
 export async function request<T>(path:string, options?:RequestInit):Promise<T> {
+ let response:Response;
+ try { response=await fetch(API+path,{cache:'no-store',...options}); }
+ catch { throw new Error('The screening service is unavailable. Start the app with ./start.sh, then retry.'); }
+ if(!response.ok){
+  let detail=response.status>=500?'The screening service is unavailable. Start the app with ./start.sh, then retry.':'Request failed';
+  if(response.status<500)try{const body=await response.json();detail=typeof body.detail==='string'?body.detail:JSON.stringify(body.detail)}catch{}
+  throw new Error(detail);
+ }
+ return response.status===204 ? undefined as T : response.json();
+}
+export const json = (method:string,body:unknown):RequestInit=>({method,headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
