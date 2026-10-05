@@ -63,6 +63,7 @@ def check_dependencies():
         sys.exit(1)
 
 
+def check_port(port, service_name, host="127.0.0.1"):
     """Check if a port is already occupied."""
     import socket
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -137,6 +138,7 @@ def run_test():
 def run_backend():
     """Run the FastAPI backend service."""
     check_dependencies()
+    check_port(8000, "Backend (FastAPI)")
     print("[Folio] Starting FastAPI backend on http://127.0.0.1:8000 ...")
     env = get_env()
     cmd = [
@@ -162,6 +164,7 @@ def run_backend():
 def run_frontend():
     """Run the Next.js frontend dev server."""
     check_dependencies()
+    check_port(3000, "Frontend (Next.js)")
     print("[Folio] Starting Next.js frontend on http://127.0.0.1:3000 ...")
     npm_bin = shutil.which("npm") or ("npm.cmd" if sys.platform == "win32" else "npm")
     cmd = [npm_bin, "run", "dev", "--", "--hostname", "127.0.0.1", "--port", "3000"]
@@ -174,6 +177,8 @@ def run_frontend():
 def run_both():
     """Run both backend and frontend concurrently with graceful shutdown."""
     check_dependencies()
+    check_port(8000, "Backend (FastAPI)")
+    check_port(3000, "Frontend (Next.js)")
     env = get_env()
     npm_bin = shutil.which("npm") or ("npm.cmd" if sys.platform == "win32" else "npm")
 
