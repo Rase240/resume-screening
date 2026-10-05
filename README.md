@@ -13,3 +13,13 @@ start.bat
 ```
 
 **Linux / macOS**:
+```bash
+./start.sh install
+./start.sh
+```
+
+*(Or use the unified cross-platform runner directly: `python run.py [backend|frontend|install|test]`)*
+
+Open <http://127.0.0.1:3000>. The launcher starts the FastAPI service and Next.js interface together. The browser uses the frontend's same-origin `/api` proxy.
+
+## Workflow
