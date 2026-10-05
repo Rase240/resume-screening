@@ -22,6 +22,7 @@ NODE_MODULES = FRONTEND_DIR / "node_modules"
 
 # On Windows, if launched with an incompatible Python (e.g. MSYS 3.14 without pip),
 # auto-switch to Python 3.12 via py launcher if available.
+if sys.platform == "win32" and sys.version_info >= (3, 14):
     py_launcher = shutil.which("py")
     if py_launcher:
         check = subprocess.run(
