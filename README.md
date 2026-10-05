@@ -37,3 +37,20 @@ Open <http://127.0.0.1:3000>. The launcher starts the FastAPI service and Next.j
 - `frontend/`: Next.js 14 and React interface.
 - `backend/`: FastAPI, SQLite, PDF/DOCX extraction, and scoring.
 - `backend/data/`: local database and uploaded originals, excluded from the project archive.
+
+The score is a **role-specific match estimate**, not an official ATS score. Required and preferred skills use explicit term evidence; experience and education use extracted details. Language similarity combines local word and character n-gram TF-IDF cosine similarity. Names, contact details, and common protected-characteristic labels are excluded from similarity input. Configured weights are normalized across applicable categories. Changing a role or correcting extracted text recalculates scores. No paid API key is required.
+
+The score is a review aid. It does not make hiring decisions, and a reviewer should verify parsing, evidence, and borderline cases.
+
+## Privacy and limitations
+
+This is a local mentor/demo application, not a production multi-user hiring service. It has no login, authorization, audit trail, encryption at rest, or retention policy. Keep it bound to localhost. Text-based PDFs work; scanned PDFs need OCR. Extraction of contact details, education, work history, and years of experience is heuristic.
+
+## Verification
+
+```bash
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 PYTHONPATH=backend/vendor:backend OPENBLAS_NUM_THREADS=1 python3 -m pytest backend/tests -q
+cd frontend && npm run build
+```
+
+The backend tests cover parsing, scoring, role creation, upload, duplicate detection, review updates, bulk status validation, CSV export, file access, and deletion.
